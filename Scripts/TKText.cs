@@ -41,55 +41,16 @@ namespace TextKit {
         private float3 SizeMultiplier => characterSettings.textScale * sizeMultiplier;
 
         [Space, SerializeField, TextArea(1, 10)] private string text = string.Empty;
-        public string Text {
-            get => text;
-            set {
-                if (string.IsNullOrEmpty(value) || string.IsNullOrWhiteSpace(value)) {
-                    ClearText();
-                    text = value;
-                } else {
-                    CreateText(value);
-                }
-            }
-        }
 
         private MaterialPropertyBlock materialPropertyBlock;
-        public MeshRenderer[] Renderers { get; private set; }
 #if ODIN_INSPECTOR_3
+        [BoxGroup("Debug"), ShowInInspector, ReadOnly] public MeshRenderer[] CharacterRenderers { get; private set; }
         [BoxGroup("Debug"), ShowInInspector, ReadOnly] private Dictionary<GameObject, string> activeObjects;
 #else
+        public MeshRenderer[] CharacterRenderers { get; private set; }
         private Dictionary<GameObject, string> activeObjects;
 #endif
         private Dictionary<string, TKCharacter> CharacterLink => characterSettings.characterLink;
-
-        public Material Material {
-            get => material;
-            set {
-                this.material = value;
-                if (Renderers != null) {
-                    foreach (MeshRenderer r in Renderers) {
-                        r.sharedMaterial = value;
-                    }
-                }
-            }
-        }
-
-        public MaterialPropertyBlock PropertyBlock {
-            get {
-                if (materialPropertyBlock == null) {
-                    materialPropertyBlock = new MaterialPropertyBlock();
-                }
-                return materialPropertyBlock;
-            }
-            set {
-                materialPropertyBlock = value;
-                if (Renderers != null) {
-                    foreach (MeshRenderer r in Renderers) {
-                        r?.SetPropertyBlock(value);
-                    }
-                }
-            }
-        }
 
         private void Start() {
             if (text != string.Empty) {
@@ -113,43 +74,33 @@ namespace TextKit {
             }
         }
 
-        public void ClearText() {
-            beforeTextCleared?.Invoke(this);
-            foreach (GameObject key in activeObjects.Keys) {
-                CharacterLink[activeObjects[key]].pool.Release(key);
-            }
-            activeObjects.Clear();
-            Renderers = null;
-        }
-
-        public void ClearCharacters(int[] indices) => ClearCharacters(indices.Select(i => Renderers[i].gameObject).ToArray());
-
-        public void ClearCharacters(GameObject[] objects) {
-            if (objects == null) { return; }
-            foreach (GameObject obj in objects) {
-                if (activeObjects.ContainsKey(obj)) {
-                    CharacterLink[activeObjects[obj]].pool.Release(obj);
-                    activeObjects.Remove(obj);
-                }
-            }
-        }
-
         public void CreateText(string text) {
             if (automaticallyCleanText) {
                 ClearText();
             } else {
                 activeObjects.Clear();
-                Renderers = null;
+                CharacterRenderers = null;
             }
 
             this.text = text;
 
-            string[] lines = text.Split('\n');
+            CharacterRenderers = CreateInitialText();
 
+            if (materialPropertyBlock != null) {
+                PropertyBlock = PropertyBlock;
+            }
+
+            onTextReady?.Invoke(this);
+        }
+
+        private MeshRenderer[] CreateInitialText() {
+            string[] lines = text.Split('\n');
             float3[] characterPositions = GetCharacterPositions(text, lines);
 
-            GameObject[] createdChars = new GameObject[text.Length];
             int lineStartIndex = 0;
+
+            int indexCounter = 0;
+            GameObject[] createdObjects = new GameObject[text.Length];
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
                 string line = lines[lineIndex];
@@ -162,28 +113,49 @@ namespace TextKit {
                             i = newIndex;
                         }
 
-                        GameObject obj = CopyCharacter(character, transform, float3.zero, true, out float extents);
+                        GameObject obj = CopyCharacter(character, transform, float3.zero, true, out _);
                         if (obj != null) {
+                            createdObjects[indexCounter] = obj;
                             obj.transform.localScale *= sizeMultiplier;
-                            createdChars[lineStartIndex + i] = obj;
                             obj.transform.localPosition = characterPositions[lineStartIndex + i];
                         }
                     }
+                    indexCounter++;
                 }
 
                 lineStartIndex += line.Length;
             }
 
-            Renderers = GetComponentsInChildren<MeshRenderer>(true);
-            foreach (MeshRenderer r in Renderers) {
-                r.enabled = true;
-            }
+            return createdObjects.Select(obj => obj?.GetComponent<MeshRenderer>() ?? null).ToArray();
+        }
 
-            if (materialPropertyBlock != null) {
-                PropertyBlock = PropertyBlock;
-            }
+        public void RecomputeTextLayout() {
+            string[] lines = text.Split('\n');
+            float3[] characterPositions = GetCharacterPositions(text, lines);
 
-            onTextReady?.Invoke(this);
+            int lineStartIndex = 0;
+            int indexCounter = 0;
+
+            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
+                string line = lines[lineIndex];
+
+                for (int i = 0; i < line.Length; i++) {
+                    if (!char.IsWhiteSpace(line[i])) {
+                        if (Extensions.TryGetModifiedCharacter(line, i, out _, out int newIndex)) {
+                            i = newIndex;
+                        }
+
+                        GameObject obj = CharacterRenderers[indexCounter].gameObject;
+                        if (obj != null) {
+                            obj.transform.localScale = SizeMultiplier;
+                            obj.transform.localPosition = characterPositions[lineStartIndex + i];
+                        }
+                    }
+                    indexCounter++;
+                }
+
+                lineStartIndex += line.Length;
+            }
         }
 
         private GameObject CopyCharacter(string source, Transform parent, float3 position, bool active, out float widthExtents) {
@@ -200,9 +172,88 @@ namespace TextKit {
         }
 
         public void SetRendererActive(bool state) {
-            foreach (MeshRenderer r in Renderers) {
+            foreach (MeshRenderer r in CharacterRenderers) {
                 r.enabled = state;
             }
         }
+    }
+
+    // MARK: - Clear
+
+    public partial class TKText {
+        public void ClearText() {
+            beforeTextCleared?.Invoke(this);
+            foreach (GameObject key in activeObjects.Keys) {
+                CharacterLink[activeObjects[key]].pool.Release(key);
+            }
+            activeObjects.Clear();
+            CharacterRenderers = null;
+        }
+
+        public void ClearCharacters(int[] indices) => ClearCharacters(indices.Select(i => CharacterRenderers[i].gameObject).ToArray());
+
+        public void ClearCharacters(GameObject[] objects) {
+            if (objects == null) { return; }
+            foreach (GameObject obj in objects) {
+                if (activeObjects.ContainsKey(obj)) {
+                    CharacterLink[activeObjects[obj]].pool.Release(obj);
+                    activeObjects.Remove(obj);
+                }
+            }
+        }
+    }
+
+    // MARK: - Property Access
+
+    public partial class TKText {
+        public string Text {
+            get => text;
+            set {
+                if (string.IsNullOrEmpty(value) || string.IsNullOrWhiteSpace(value)) {
+                    ClearText();
+                    text = value;
+                } else {
+                    CreateText(value);
+                }
+            }
+        }
+
+        public Material Material {
+            get => material;
+            set {
+                this.material = value;
+                if (CharacterRenderers != null) {
+                    foreach (MeshRenderer r in CharacterRenderers) {
+                        r.sharedMaterial = value;
+                    }
+                }
+            }
+        }
+
+        public MaterialPropertyBlock PropertyBlock {
+            get {
+                if (materialPropertyBlock == null) {
+                    materialPropertyBlock = new MaterialPropertyBlock();
+                }
+                return materialPropertyBlock;
+            }
+            set {
+                materialPropertyBlock = value;
+                if (CharacterRenderers != null) {
+                    foreach (MeshRenderer r in CharacterRenderers) {
+                        r?.SetPropertyBlock(value);
+                    }
+                }
+            }
+        }
+
+        /*
+                public float SizeMultiplier {
+                    get => sizeMultiplier;
+                    set {
+                        sizeMultiplier = value;
+                    }
+                }
+                */
     }
 }

@@ -7,7 +7,7 @@ namespace TextKit {
     public partial class TKText {
         public Bounds GetTextBounds() {
             Bounds bounds = new Bounds();
-            foreach (MeshRenderer r in Renderers) {
+            foreach (MeshRenderer r in CharacterRenderers) {
                 bounds.Encapsulate(r.bounds);
             }
             return bounds;
