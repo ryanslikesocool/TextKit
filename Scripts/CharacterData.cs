@@ -11,8 +11,8 @@ namespace TextKit {
     internal struct CharacterData {
 #if ODIN_INSPECTOR_3
         [SerializeField, HorizontalGroup("H"), LabelWidth(40)] private Mesh mesh;
-        [SerializeField, HorizontalGroup("H"), LabelWidth(40), ToggleLeft] private bool overrideString;
-        [SerializeField, ShowIf("overrideString")] private string customString;
+        [SerializeField, HorizontalGroup("H", Width = 50), LabelWidth(95), LabelText("Override String")] private bool overrideString;
+        [SerializeField, HorizontalGroup("H", Width = 0.5f), EnableIf("overrideString"), HideLabel] private string customString;
 
         public CharacterData(Mesh mesh) {
             this.mesh = mesh;
