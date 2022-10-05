@@ -15,7 +15,7 @@ namespace TextKit {
 
 #if ODIN_INSPECTOR_3
         [SerializeField, BoxGroup("Transform")] internal bool recenter = true;
-        [SerializeField, BoxGroup("Transform")] internal float3 textScale = 200;
+        [SerializeField, BoxGroup("Transform")] internal float3 textScale = 1;
         [SerializeField, BoxGroup("Transform")] internal float3 rotation = new float3(0, 180, 0);
         [SerializeField, BoxGroup("Transform")] internal float3 pivot = new float3(0, 0.5f, 0);
 
@@ -25,8 +25,7 @@ namespace TextKit {
 
         [SerializeField, BoxGroup("Font")] internal float characterSpacing = 0.0375f;
         [SerializeField, BoxGroup("Font")] internal float whitespaceWidth = 0.1f;
-        [SerializeField, BoxGroup("Font")] internal float whitespaceHeight = 0.18059f;
-        [SerializeField, BoxGroup("Font")] internal float lineSpacing = 0.06f;
+        [SerializeField, BoxGroup("Font")] internal float lineHeight = 0.06f;
         [SerializeField, BoxGroup("Font")] internal float monospacedWidth = 0.075f;
         [SerializeField, BoxGroup("Font"), Searchable] internal CharacterSet[] characterSets = new CharacterSet[0];
 
@@ -34,7 +33,7 @@ namespace TextKit {
         [ShowInInspector, BoxGroup("Debug")] internal Dictionary<string, TKCharacter> characterLink = null;
 #else
         [Header("Transform"), SerializeField] internal bool recenter = true;
-        [SerializeField] internal float3 textScale = 200;
+        [SerializeField] internal float3 textScale = 1;
         [SerializeField] internal float3 rotation = new float3(0, 180, 0);
         [SerializeField] internal float3 pivot = new float3(0, 0.5f, 0);
 
@@ -44,8 +43,7 @@ namespace TextKit {
 
         [Header("Font"), SerializeField] internal float characterSpacing = 0.0375f;
         [SerializeField] internal float whitespaceWidth = 0.1f;
-        [SerializeField] internal float whitespaceHeight = 0.18059f;
-        [SerializeField] internal float lineSpacing = 0.06f;
+        [SerializeField] internal float lineHeight = 0.06f;
         [SerializeField] internal float monospacedWidth = 0.075f;
         [SerializeField] internal CharacterSet[] characterSets = new CharacterSet[0];
 

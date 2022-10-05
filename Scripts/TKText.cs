@@ -41,6 +41,7 @@ namespace TextKit {
         private float3 SizeMultiplier => characterSettings.textScale * sizeMultiplier;
 
         [Space, SerializeField, TextArea(1, 10)] private string text = string.Empty;
+        private int2 monospacedSize = int2.zero;
 
         private MaterialPropertyBlock materialPropertyBlock;
 #if ODIN_INSPECTOR_3
@@ -97,6 +98,9 @@ namespace TextKit {
             string[] lines = text.Split('\n');
             float3[] characterPositions = GetCharacterPositions(text, lines);
 
+            monospacedSize.x = 0;
+            monospacedSize.y = lines.Length;
+
             int lineStartIndex = 0;
 
             int indexCounter = 0;
@@ -104,6 +108,7 @@ namespace TextKit {
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
                 string line = lines[lineIndex];
+                monospacedSize.x = math.max(monospacedSize.x, line.Length);
 
                 for (int i = 0; i < line.Length; i++) {
                     string character = line[i].ToString();
@@ -187,6 +192,7 @@ namespace TextKit {
                 CharacterLink[activeObjects[key]].pool.Release(key);
             }
             activeObjects.Clear();
+            monospacedSize = int2.zero;
             CharacterRenderers = null;
         }
 
@@ -246,14 +252,5 @@ namespace TextKit {
                 }
             }
         }
-
-        /*
-                public float SizeMultiplier {
-                    get => sizeMultiplier;
-                    set {
-                        sizeMultiplier = value;
-                    }
-                }
-                */
     }
 }

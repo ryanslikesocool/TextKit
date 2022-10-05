@@ -8,11 +8,11 @@ using UnityEngine.Pool;
 namespace TextKit {
     internal class TKCharacter {
         internal GameObject Prefab { get; private set; }
-        internal Bounds Bounds { get; private set; }
         internal ObjectPool<GameObject> pool;
         internal CharacterData CharacterData { get; private set; }
         internal string Character => CharacterData.AccessString;
         internal Mesh Mesh => CharacterData.Mesh;
+        internal Bounds Bounds => Mesh.bounds;
 
         internal TKCharacter(GameObject sourcePrefab, in CharacterData sourceData, Transform parent, bool hidden) => Initialize(sourcePrefab, sourceData, parent, hidden);
 
@@ -40,7 +40,6 @@ namespace TextKit {
             );
 
             CharacterData = sourceData;
-            Bounds = sourceData.Mesh.bounds;
         }
 
         internal void EnqueueMany(IEnumerable<GameObject> objects) {

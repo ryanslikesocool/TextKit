@@ -6,39 +6,51 @@ using UnityEngine;
 namespace TextKit {
     public partial class TKText {
         public Bounds GetTextBounds() {
-            Bounds bounds = new Bounds();
-            foreach (MeshRenderer r in CharacterRenderers) {
-                bounds.Encapsulate(r.bounds);
+            Bounds bounds = CharacterRenderers[0].bounds;
+            for (int i = 1; i < CharacterRenderers.Length; i++) {
+                bounds.Encapsulate(CharacterRenderers[i].bounds);
             }
             return bounds;
+        }
+
+        public float3 GetTextSize() {
+            Bounds bounds = GetTextBounds();
+            if (!monospaced) {
+                return bounds.size;
+            }
+
+            float2 gridSize = (float2)monospacedSize;
+            float2 characterSize = new float2(characterSettings.monospacedWidth, characterSettings.lineHeight) * sizeMultiplier;
+            return new float3(gridSize * characterSize, bounds.size.z);
         }
 
         public float3[] GetCharacterPositions(string text) => GetCharacterPositions(text, text.Split('\n'));
 
         public float3[] GetCharacterPositions(string text, string[] lines) {
-            float totalHeight = 0;
             float[] characterWidth = new float[text.Length];
             int lineStartIndex = 0;
+            float lineHeight = characterSettings.lineHeight * SizeMultiplier.y;
+            float totalHeight = lineHeight * lines.Length;
 
             float3[] characterPositions = new float3[text.Length];
+            float monospacedWidth = characterSettings.monospacedWidth;
+            float halfMonospacedWidth = monospacedWidth * 0.5f;
 
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
                 string line = lines[lineIndex];
-                float3 charPos = math.down() * lineIndex * characterSettings.lineSpacing * SizeMultiplier.y;
+                float3 charPos = math.down() * lineIndex * characterSettings.lineHeight * SizeMultiplier.y;
                 float lineWidth = 0;
-                float lineHeight = 0;
 
                 for (int i = 0; i < line.Length; i++) {
                     string character = line[i].ToString();
                     if (string.IsNullOrWhiteSpace(character)) {
                         lineWidth += SizeMultiplier.x * (monospaced
-                         ? characterSettings.monospacedWidth
+                         ? halfMonospacedWidth
                          : characterSettings.whitespaceWidth);
-                        lineHeight = math.max(lineHeight, characterSettings.whitespaceHeight);
 
                         if (i < line.Length - 1) {
                             lineWidth += SizeMultiplier.x * (monospaced
-                             ? characterSettings.monospacedWidth
+                             ? halfMonospacedWidth
                              : characterSettings.characterSpacing);
                         }
                     } else {
@@ -53,55 +65,54 @@ namespace TextKit {
                         }
 
                         lineWidth += SizeMultiplier.x * (monospaced
-                         ? characterSettings.monospacedWidth
+                         ? halfMonospacedWidth
                          : tkChar.Bounds.size.x);
-                        lineHeight = math.max(lineHeight, tkChar.Bounds.size.y);
 
                         if (i < line.Length - 1) {
                             lineWidth += SizeMultiplier.x * (monospaced
-                             ? characterSettings.monospacedWidth
+                             ? halfMonospacedWidth
                              : characterSettings.characterSpacing);
                         }
                     }
                 }
 
-                if (lineIndex == 0) {
-                    totalHeight = lineHeight * lines.Length + characterSettings.lineSpacing * (lines.Length - 1);
-                    totalHeight *= SizeMultiplier.y;
-                }
-                lineHeight *= SizeMultiplier.y;
-
                 for (int i = 0; i < line.Length; i++) {
+                    bool isLastCharacter = i == line.Length - 1;
+
                     string character = line[i].ToString();
                     if (string.IsNullOrWhiteSpace(character)) {
-                        charPos.x += SizeMultiplier.x * (monospaced
-                         ? characterSettings.monospacedWidth
-                         : characterSettings.whitespaceWidth);
-
-                        if (i < line.Length - 1) {
-                            charPos.x += SizeMultiplier.x * (monospaced
-                             ? characterSettings.monospacedWidth
-                             : characterSettings.characterSpacing);
+                        float delta;
+                        if (monospaced) {
+                            delta = isLastCharacter ? halfMonospacedWidth : monospacedWidth;
+                        } else {
+                            delta = characterSettings.whitespaceWidth;
+                            if (!isLastCharacter) {
+                                delta += characterSettings.characterSpacing;
+                            }
                         }
+                        charPos.x += SizeMultiplier.x * delta;
                     } else {
                         if (Extensions.TryGetModifiedCharacter(line, i, out string modifiedCharacter, out int newIndex)) {
                             character = modifiedCharacter;
                             i = newIndex;
                         }
 
-                        if (CharacterLink.ContainsKey(character)) {
+                        bool hasCharacter = CharacterLink.ContainsKey(character);
+                        if (hasCharacter) {
                             characterPositions[lineStartIndex + i] = charPos;
-                            charPos.x += SizeMultiplier.x * (monospaced
-                             ? characterSettings.monospacedWidth
-                             : CharacterLink[character].Bounds.size.x);
                             characterWidth[lineStartIndex + i] = CharacterLink[character].Bounds.size.x;
                         }
 
-                        if (i < line.Length - 1) {
-                            charPos.x += SizeMultiplier.x * (monospaced
-                             ? characterSettings.monospacedWidth
-                             : characterSettings.characterSpacing);
+                        float delta;
+                        if (monospaced) {
+                            delta = isLastCharacter ? halfMonospacedWidth : monospacedWidth;
+                        } else {
+                            delta = CharacterLink[character].Bounds.size.x;
+                            if (!isLastCharacter) {
+                                delta += characterSettings.characterSpacing;
+                            }
                         }
+                        charPos.x += SizeMultiplier.x * delta;
                     }
                 }
 
@@ -128,7 +139,7 @@ namespace TextKit {
                 }
                 for (int i = 0; i < line.Length; i++) {
                     characterPositions[lineStartIndex + i] += (offset + (monospaced
-                     ? math.right() * SizeMultiplier.x * 0.5f * (characterSettings.monospacedWidth - characterWidth[lineStartIndex + i])
+                     ? math.right() * SizeMultiplier.x * 0.5f * (halfMonospacedWidth - characterWidth[lineStartIndex + i])
                      : 0));
                 }
 
