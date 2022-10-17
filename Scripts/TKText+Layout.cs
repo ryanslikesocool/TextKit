@@ -6,9 +6,9 @@ using UnityEngine;
 namespace TextKit {
     public partial class TKText {
         public Bounds GetTextBounds() {
-            Bounds bounds = CharacterRenderers[0].bounds;
+            Bounds bounds = CharacterRenderers[0].Bounds;
             for (int i = 1; i < CharacterRenderers.Length; i++) {
-                bounds.Encapsulate(CharacterRenderers[i].bounds);
+                bounds.Encapsulate(CharacterRenderers[i].Bounds);
             }
             return bounds;
         }

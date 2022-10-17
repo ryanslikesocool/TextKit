@@ -8,11 +8,14 @@ using Sirenix.OdinInspector;
 
 namespace TextKit {
     [CreateAssetMenu(menuName = "Developed With Love/TextKit/Character Set")]
-    internal class CharacterSet : ScriptableObject {
+    public class TKCharacterSet : ScriptableObject {
 #if ODIN_INSPECTOR_3
         [ListDrawerSettings(Expanded = true), Searchable]
 #endif
-        [SerializeField] internal CharacterData[] characters = new CharacterData[0];
+        public TKCharacter[] characters = new TKCharacter[0];
+
+        public TKCharacter this[int index] => characters[index];
+        public int Length => characters.Length;
 
 #if ODIN_INSPECTOR_3
         [Button]
@@ -21,9 +24,9 @@ namespace TextKit {
                 return;
             }
 
-            characters = new CharacterData[meshes.Length];
+            characters = new TKCharacter[meshes.Length];
             for (int i = 0; i < meshes.Length; i++) {
-                characters[i] = new CharacterData(meshes[i]);
+                characters[i] = new TKCharacter(meshes[i]);
             }
         }
 #endif
