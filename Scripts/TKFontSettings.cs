@@ -13,7 +13,7 @@ namespace TextKit {
     public class TKFontSettings : ScriptableObject {
 #if ODIN_INSPECTOR_3
         [BoxGroup("Transform")] public float3 textScale = 1;
-        [BoxGroup("Transform")] public float3 rotation = new float3(0, 180, 0);
+        [BoxGroup("Transform")] public float3 rotation = 0;
 
         [BoxGroup("Font")] public float characterSpacing = 0.0375f;
         [BoxGroup("Font")] public float whitespaceWidth = 0.1f;
@@ -24,7 +24,7 @@ namespace TextKit {
         [ShowInInspector, BoxGroup("Debug")] internal Dictionary<string, TKCharacter> characterLink = null;
 #else
         [Header("Transform")] public float3 textScale = 1;
-        public float3 rotation = new float3(0, 180, 0);
+        public float3 rotation = 0;
 
         [Header("Font")] public float characterSpacing = 0.0375f;
         public float whitespaceWidth = 0.1f;

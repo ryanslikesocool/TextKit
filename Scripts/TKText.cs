@@ -28,13 +28,13 @@ namespace TextKit {
         private MaterialPropertyBlock materialPropertyBlock;
         private Dictionary<string, TKCharacter> CharacterLink => characterSettings.characterLink;
 
-        private void Start() {
+        protected virtual void Start() {
             if (text != string.Empty) {
                 CreateDefaultText();
             }
         }
 
-        private void OnEnable() {
+        protected virtual void OnEnable() {
             characterRendererPool = new ObjectPool<TKCharacterRenderer>(
                 createFunc: OnPoolCreate,
                 actionOnRelease: OnPoolRelease,
@@ -47,7 +47,7 @@ namespace TextKit {
             Application.quitting += characterSettings.Dispose;
         }
 
-        private void OnDisable() {
+        protected virtual void OnDisable() {
             characterRendererPool.Clear();
 
             Application.quitting -= characterSettings.Dispose;
