@@ -1,5 +1,6 @@
 ﻿// Developed With Love by Ryan Boyer http://ryanjboyer.com <3
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
@@ -21,7 +22,6 @@ namespace TextKit {
         [BoxGroup("Rendering"), SerializeField] private Material material = null;
         [BoxGroup("Rendering"), SerializeField] private TKCharacterRenderer rendererPrefab = null;
 
-        [BoxGroup("Cleanup")] public bool automaticallyReleaseText = true;
         [BoxGroup("Cleanup")] public HideFlags characterHideFlags = HideFlags.HideAndDontSave;
 
         [BoxGroup("Pooling")] public int defaultPoolCapacity = 5;
@@ -40,8 +40,7 @@ namespace TextKit {
         [Header("Rendering"), SerializeField] private Material material = null;
         [SerializeField] private TKCharacterRenderer rendererPrefab = null;
 
-        [Header("Cleanup")] public bool automaticallyReleaseText = true;
-        public HideFlags characterHideFlags = HideFlags.HideAndDontSave;
+        [Header("Cleanup")] public HideFlags characterHideFlags = HideFlags.HideAndDontSave;
 
         [Header("Pooling")] public int defaultPoolCapacity = 5;
         public int maxPoolSize = 15;
@@ -74,7 +73,7 @@ namespace TextKit {
                     ClearText();
                     text = value;
                 } else {
-                    CreateText(value);
+                    SetText(value);
                 }
             }
         }
@@ -112,7 +111,7 @@ namespace TextKit {
 
         protected virtual void Start() {
             if (text != string.Empty) {
-                CreateDefaultText();
+                SetText(text);
             }
         }
 
@@ -138,24 +137,21 @@ namespace TextKit {
 
         // MARK: - TextKit
 
-        public void CreateDefaultText() => CreateText(text);
-
         private void VerifyLinks() {
             characterSettings.SetUpCharacterSets();
         }
 
         public virtual void DidCreateText() { }
 
-        public void CreateText(string text) {
-            if (automaticallyReleaseText) {
-                ClearText();
-            } else {
-                CharacterRenderers = null;
-            }
+        public void SetText(string text) {
+            //ClearText();
 
             this.text = text;
 
-            CharacterRenderers = CreateRenderers();
+            CreateRenderers();
+            ApplyRendererSettings();
+            SetCharacterData();
+            ComputeTextLayout();
 
             if (materialPropertyBlock != null) {
                 PropertyBlock = PropertyBlock;
@@ -164,7 +160,65 @@ namespace TextKit {
             DidCreateText();
         }
 
-        private TKCharacterRenderer[] CreateRenderers() {
+        private void CreateRenderers() {
+            TKCharacterRenderer[] oldValues = this.CharacterRenderers;
+            TKCharacterRenderer[] result = new TKCharacterRenderer[text.Length];
+
+            Action<int> body;
+            if (oldValues == null) {
+                body = i => result[i] = characterRendererPool.Get();
+            } else if (oldValues.Length < result.Length) {
+                body = i => {
+                    if (i < oldValues.Length) {
+                        result[i] = oldValues[i] ?? characterRendererPool.Get();
+                    } else {
+                        result[i] = characterRendererPool.Get();
+                    }
+                };
+            } else {
+                body = i => result[i] = oldValues[i] ?? characterRendererPool.Get();
+            }
+
+            for (int i = 0; i < result.Length; i++) {
+                string character = text[i].ToString();
+                if (string.IsNullOrWhiteSpace(character)) {
+                    continue;
+                }
+                if (Extensions.TryGetModifiedCharacter(text, i, out string modifiedCharacter, out int newIndex)) {
+                    character = modifiedCharacter;
+                    i = newIndex;
+                }
+
+                body(i);
+                //result[i] = oldValues[i] ?? characterRendererPool.Get();
+            }
+
+            CharacterRenderers = result;
+        }
+
+        private void SetCharacterData() {
+            IterateText((index, character) => {
+                CharacterLink.TryGetValue(character, out TKCharacter tkChar);
+                CharacterRenderers[index].SetCharacter(tkChar, material);
+            });
+        }
+
+        private void IterateText(Action<int, string> body) {
+            for (int i = 0; i < text.Length; i++) {
+                string character = text[i].ToString();
+                if (string.IsNullOrWhiteSpace(character)) {
+                    continue;
+                }
+                if (Extensions.TryGetModifiedCharacter(text, i, out string modifiedCharacter, out int newIndex)) {
+                    character = modifiedCharacter;
+                    i = newIndex;
+                }
+
+                body(i, character);
+            }
+        }
+
+        private void SinglePassCreate() {
             string[] lines = text.Split('\n');
             float3[] characterPositions = GetCharacterPositions(text, lines);
 
@@ -188,7 +242,7 @@ namespace TextKit {
                             i = newIndex;
                         }
 
-                        TKCharacterRenderer obj = CopyCharacter(character, transform, float3.zero, true, out _);
+                        TKCharacterRenderer obj = CopyCharacter(character, float3.zero, true, out _);
                         if (obj != null) {
                             createdObjects[indexCounter] = obj;
                             obj.transform.localScale *= sizeMultiplier;
@@ -201,7 +255,7 @@ namespace TextKit {
                 lineStartIndex += line.Length;
             }
 
-            return createdObjects;//.Select(obj => obj ?? null).ToArray();
+            CharacterRenderers = createdObjects;//.Select(obj => obj ?? null).ToArray();
         }
 
         public void SetRendererActive(bool state) {
@@ -251,24 +305,18 @@ namespace TextKit {
             GameObject.Destroy(obj.gameObject);
         }
 
-        private TKCharacterRenderer CopyCharacter(string source, Transform parent, float3 position, bool active, out float widthExtents) {
+        private TKCharacterRenderer CopyCharacter(string source, float3 position, bool active, out float widthExtents) {
             if (CharacterLink.TryGetValue(source, out TKCharacter tkChar)) {
                 widthExtents = tkChar.Bounds.extents.x;
 
                 TKCharacterRenderer obj = characterRendererPool.Get();
                 obj.SetCharacter(tkChar, material);
 
-                obj.transform.SetParent(parent);
-                obj.transform.localPosition = position;
-                obj.transform.localEulerAngles = characterSettings.rotation;
-                obj.transform.localScale = characterSettings.textScale;
+                ApplyRendererSettings(obj);
 
-                obj.Enabled = true;
+                obj.transform.localPosition = position;
 
                 obj.gameObject.SetActive(active);
-
-                obj.gameObject.layer = gameObject.layer;
-                obj.gameObject.hideFlags = characterHideFlags;
 
                 return obj;
             }
@@ -277,9 +325,29 @@ namespace TextKit {
             return null;
         }
 
+        private void ApplyRendererSettings() {
+            foreach (TKCharacterRenderer item in CharacterRenderers) {
+                if (item == null) {
+                    continue;
+                }
+                ApplyRendererSettings(item);
+            }
+        }
+
+        private void ApplyRendererSettings(TKCharacterRenderer obj) {
+            obj.transform.SetParent(transform);
+            obj.transform.localEulerAngles = characterSettings.rotation;
+            obj.transform.localScale = characterSettings.textScale;
+
+            obj.Enabled = true;
+
+            obj.gameObject.layer = gameObject.layer;
+            obj.gameObject.hideFlags = characterHideFlags;
+        }
+
         // MARK: - Layout
 
-        public void RecomputeTextLayout() {
+        public void ComputeTextLayout() {
             string[] lines = text.Split('\n');
             float3[] characterPositions = GetCharacterPositions(text, lines);
 

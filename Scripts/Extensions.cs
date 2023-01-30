@@ -33,17 +33,17 @@ namespace TextKit {
 
         public static Bounds GetRendererBounds(GameObject container) => container.GetComponent<MeshRenderer>().bounds;
 
-        public static bool TryGetModifiedCharacter(string line, int startIndex, out string result, out int newIndex) {
+        public static bool TryGetModifiedCharacter(string text, int startIndex, out string result, out int newIndex) {
             result = string.Empty;
             newIndex = startIndex;
 
-            if (line[startIndex].ToString() == MODIFIER && line[startIndex + 1].ToString() == START_MODIFIED) {
+            if (text[startIndex].ToString() == MODIFIER && text[startIndex + 1].ToString() == START_MODIFIED) {
                 int originalIndex = startIndex;
                 int modifiedLength = 0;
 
-                for (int j = startIndex; j < line.Length; j++) {
+                for (int j = startIndex; j < text.Length; j++) {
                     modifiedLength++;
-                    if (line[j].ToString() == END_MODIFIED) {
+                    if (text[j].ToString() == END_MODIFIED) {
                         modifiedLength = j - startIndex + 1;
                         newIndex = j;
                         break;
@@ -51,7 +51,7 @@ namespace TextKit {
                 }
 
                 if (modifiedLength > 3) {
-                    result = line.Substring(originalIndex + 1, modifiedLength - 1);
+                    result = text.Substring(originalIndex + 1, modifiedLength - 1);
                     return true;
                 }
 
