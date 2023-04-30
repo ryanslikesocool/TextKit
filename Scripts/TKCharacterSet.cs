@@ -10,7 +10,7 @@ namespace TextKit {
     [CreateAssetMenu(menuName = "Developed With Love/TextKit/Character Set")]
     public class TKCharacterSet : ScriptableObject {
 #if ODIN_INSPECTOR_3
-        [ListDrawerSettings(Expanded = true), Searchable]
+        [ListDrawerSettings(DefaultExpandedState = true), Searchable]
 #endif
         public TKCharacter[] characters = new TKCharacter[0];
 
