@@ -6,16 +6,18 @@ using UnityEngine;
 using Sirenix.OdinInspector;
 #endif
 
-namespace TextKit {
-    [CreateAssetMenu(menuName = "Developed With Love/TextKit/Character Set")]
-    public class TKCharacterSet : ScriptableObject {
+namespace TextKit
+{
+	[CreateAssetMenu(menuName = "Developed With Love/TextKit/Character Set")]
+	public class TKCharacterSet : ScriptableObject
+	{
 #if ODIN_INSPECTOR_3
         [ListDrawerSettings(DefaultExpandedState = true), Searchable]
 #endif
-        public TKCharacter[] characters = new TKCharacter[0];
+		public TKCharacter[] characters = new TKCharacter[0];
 
-        public TKCharacter this[int index] => characters[index];
-        public int Length => characters.Length;
+		public TKCharacter this[int index] => characters[index];
+		public int Length => characters.Length;
 
 #if ODIN_INSPECTOR_3
         [Button]
@@ -30,5 +32,5 @@ namespace TextKit {
             }
         }
 #endif
-    }
+	}
 }
